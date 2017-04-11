@@ -8,8 +8,8 @@ double step;
 
 int main(int argc, char* argv[])
 {
-	volatile double tab[25];
-	for (int i = 0; i < 25; i++){ tab[i] = 0;}
+	volatile double tab[30];
+	for (int i = 0; i < 30; i++){ tab[i] = 0;}
 
 	clock_t start, stop;
 	double pi, sum=0.0;
@@ -19,12 +19,12 @@ int main(int argc, char* argv[])
 	step = 1./(double)num_steps;
 	start = clock();
 	int offset = 0;
-	for (offset = 0; offset < 25; offset++)
+	for (offset = 0; offset < 29; offset++)
 	{
 		sum = 0.0;
 		startwtime = omp_get_wtime();
 		start = clock();
-		for (int j = 0; j < 25; j++){ tab[j] = 0;}
+		for (int j = 0; j < 30; j++){ tab[j] = 0;}
 		#pragma omp parallel num_threads(2)// for reduction (+:sum)
 		{
 			//double suml = 0.0;
