@@ -18,20 +18,19 @@ int main(int argc, char* argv[])
 	step = 1./(double)num_steps;
 	start = clock();
 
-#pragma omp parallel for //reduction(+:sum)//tworzenie dodatkowych procesów
-//wszystkie będą wykonywać tę instrukcje naraz
-// domyślnie tyle ile system ma procesów - 8 wątków softwerowych 
-// np. 8: 4 jednostki wykonawcze, 
-// kazda z nich moze 1 przetwarzać po 2 wątki kodu
-//the reduction at the end of the parallel region
+#pragma omp parallel 
+{ 
+double suml=0.0; //suma lokalna
+#pragma omp for
 
 	for (i=0; i<num_steps; i++)
 	{
-		double x = (i + .5)*step; //double - dodaje lokalna zmienna tego watku
-		#pragma omp atomic 		
-		sum = sum + 4.0/(1.+ x*x);
+		double x = (i + .5)*step;	
+		suml += 4.0/(1.+ x*x);
 	}
-	
+#pragma omp atomic //poprawne scalenie zmiennej globalnej
+sum+=suml;
+}	
 	pi = sum*step;
 	stop = clock();
 
