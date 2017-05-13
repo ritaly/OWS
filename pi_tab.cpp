@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 	clock_t start, stop;
 	double x, pi, sum=0.0;
 	int i;
-	volatile double tab[10];
+	volatile double tab[10]; //życzenie-chcę by mi działało na pamięci a nie w rejestrze
 
 //osobny start
 	double start_t=0.0, end_t;
@@ -30,7 +30,7 @@ tab[id]=0.0;
 		double x = (i + .5)*step; //double - dodaje lokalna zmienna tego watku		
 		tab[id] += 4.0/(1.+ x*x);
 	}
-#pragma omp atomic
+#pragma omp atomic //prallel + atomic to to samo co reduction
 sum+=tab[id];
 }	
 	pi = sum*step;
