@@ -17,13 +17,13 @@ int main(int argc, char * argv[]) {
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
         if (rank == 0) {
-                /*fprintf(stdout, "Liczba krokow: (0 konczy prace): ");
+                fprintf(stdout, "Liczba krokow: (0 konczy prace): ");
                 fflush(stdout);
                 if (scanf("%d", &num_steps) != 1) {
                         fprintf(stdout, "Koniec pracy\n");
                         num_steps = 0;
-                }; */
-                num_steps = 1000000000;
+                };
+                //num_steps = 1000000000;
                 fprintf(stdout, "Instancja: %d\n", num_steps);
                 //jeśli kroków >100  wysyła instację do pozostałych procesów, które uczestniczą w obliczeniach
                 if (num_steps > 100) {
