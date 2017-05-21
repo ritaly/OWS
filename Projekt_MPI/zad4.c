@@ -7,7 +7,7 @@
 int main(int argc, char * argv[]) {
         MPI_Status status;
         char message[100];
-        int numprocs, rank, namelen;
+        int numprocs, rank;
         double step;
         int num_steps = 0;
         int p_start, p_end;
