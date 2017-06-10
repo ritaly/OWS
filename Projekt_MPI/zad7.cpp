@@ -1,163 +1,159 @@
-#include <iostream>
 #include <mpi.h>
-#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-const int n = 12, P = 4, PP = 2;
-const int nPP = n / PP;
-int procCount;
+const int P = 16;
+const int PP = 4; //liczba procesorow PP*PP - algorytm dla P^2 procesorow
+const int n = 2000;  //rozmiar tablic
 
-int getLeftProc(int procRank)
-{
-        return (procRank - 1 + PP) % PP + (procRank / PP) * PP;
+int numprocs;
+float temp[n / PP];
+float A[n / PP][n / PP], B[n / PP][n / PP], C[n / PP][n / PP];
+
+int myLeft(int my_rank) {
+        return (my_rank - 1 + PP) % PP + (my_rank / PP) * PP;
 }
 
-int getRightProc(int procRank)
-{
-        return (procRank + 1) % PP + (procRank / PP) * PP;
+int myRight(int my_rank) {
+        return (my_rank + 1) % PP + (my_rank / PP) * PP;
 }
 
-int getUpProc(int procRank)
-{
-        return (procRank - PP + procCount) % procCount;
+int myTop(int my_rank) {
+        return (my_rank - PP + numprocs) % numprocs;
 }
 
-int getDownProc(int procRank)
-{
-        return (procRank + PP) % procCount;
+int myBottom(int my_rank) {
+        return (my_rank + PP) % numprocs;
 }
 
-int main(int argc, char* argv[])
-{
-
-        FILE* inFile;
-        FILE* outFile;
+int main(int argc, char *argv[]) {
+        FILE *plik;
+        FILE *plik_out;
 
         int tag = 0;
-        int finish;
-        int fromProc, toProc;
-        int procRank;
+        int koniec;
+        int my_rank;
+        int from_rank, to_rank;
+        int root = 0;
 
         MPI_Status statRecv[1];
         MPI_Request reqSend[1], reqRecv[1];
 
-        float tempRow[nPP];
-        float A[nPP][nPP], B[nPP][nPP], C[nPP][nPP];
-
-        double startProcTime, startWorkTime, endTime;
+        double startwtime1, startwtime2, endtime;
 
         MPI_Init(NULL, NULL);
-        MPI_Comm_size(MPI_COMM_WORLD, &procCount);
-        MPI_Comm_rank(MPI_COMM_WORLD, &procRank);
+        MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+        MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
-        int rootProc = 0;
-        bool isRootProc = procRank == rootProc;
-        int procRow = procRank / PP;
-        int procCol = procRank % PP;
+        int row = my_rank / PP;
+        int col = my_rank % PP;
 
-        if (procCount != P) {
-                if (isRootProc) {
-                        printf("wywolano obliczenia iloczynu macierzy metoda cannona na %d procesach - uruchom mpirun -np %d <nazwa programu>\n", procCount, P);
+        if (numprocs != P) {
+                if (my_rank == root) {
+                        printf("wywolano obliczenia iloczynu macierzy metoda cannona na %d procesach - uruchom mpirun -np %d <nazwa programu>\n", numprocs, P);
                 }
                 MPI_Finalize();
-                exit(0);
+                return 0;
         }
 
-        if (isRootProc) {
-                startProcTime = MPI_Wtime();
-                inFile = fopen("liczby.txt", "r");
-                if (inFile == NULL) {
-                        printf("Blad otwarcia pliku \"liczby.txt\"\n");
-                        finish = 1;
-                        MPI_Bcast(&finish, 1, MPI_INT, tag, MPI_COMM_WORLD);
+        if (my_rank == root) {
+                startwtime1 = MPI_Wtime();
+                plik = fopen("liczby.txt","r");
+                if (plik == NULL) {
+                        printf("Blad otwarcia pliku \"7.txt\"\n");
+                        koniec = 1;
+                        MPI_Bcast(&koniec, 1, MPI_INT, tag, MPI_COMM_WORLD);
+                        MPI_Finalize();
+                        return 0;
+                } else {
+                        koniec = 0;
+                        MPI_Bcast(&koniec, 1, MPI_INT, tag, MPI_COMM_WORLD);
+                }
+        } else {
+                MPI_Bcast(&koniec, 1, MPI_INT, tag, MPI_COMM_WORLD);
+                if (koniec) {
                         MPI_Finalize();
                         exit(0);
                 }
-                else {
-                        finish = 0;
-                        MPI_Bcast(&finish, 1, MPI_INT, tag, MPI_COMM_WORLD);
-                }
         }
-        else {
-                MPI_Bcast(&finish, 1, MPI_INT, tag, MPI_COMM_WORLD);
-                if (finish) {
-                        MPI_Finalize();
-                        exit(0);
-                }
+        if (my_rank == root)
+        {
+                printf("obliczenia metody Cannona dla tablicy %d x %d elementow \n", n, n);
+                startwtime1 = MPI_Wtime();                  //czas w sekundach
         }
 
-        if (isRootProc) {
+        if (my_rank == root) {
 
                 for (int i = 0; i < n * PP; i++) {
-                        for (int j = 0; j < nPP; j++) {
-                                fscanf(inFile, "%f", &tempRow[j]);
-                                //printf("%f\n", tempRow[j]);
+                        for (int j = 0; j < (n / PP); j++) {
+                                fscanf(plik, "%f", &temp[j]);
+                                //printf("%f\n", temp[j]);
                         }
-                        toProc = (i / n) * PP + (i % PP);
+                        to_rank = (i / n) * PP + (i % PP);
 
-                        if (toProc == rootProc) {
-                                for (int k = 0; k < nPP; k++) {
-                                        A[i / PP][k] = tempRow[k];
-                                        B[i / PP][k] = tempRow[k];
+                        if (to_rank == root) {
+                                for (int k = 0; k < (n / PP); k++) {
+                                        A[i / PP][k] = temp[k];
+                                        B[i / PP][k] = temp[k];
                                 }
-                        }
-                        else {
-                                // printf("sending %d %d\n", toProc, (i / PP) % nPP);
-                                MPI_Isend(tempRow, nPP, MPI_FLOAT, toProc, (i / PP) % nPP, MPI_COMM_WORLD, reqSend);
+                        } else {
+                                // printf("sending %d %d\n", to_rank, (i / PP) % (n / PP));
+                                MPI_Isend(temp, (n / PP), MPI_FLOAT, to_rank, (i / PP) % (n / PP), MPI_COMM_WORLD, reqSend);
                         }
                 }
-                fclose(inFile);
-        }
-        else {
-                for (int i = 0; i < nPP; i++) {
-                        // printf("waiting for %d %d\n", procRank, i);
-                        MPI_Recv(tempRow, nPP, MPI_FLOAT, rootProc, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        // printf("received %d %d\n", procRank, i);
-                        for (int j = 0; j < nPP; j++) {
-                                A[i][j] = tempRow[j];
-                                B[i][j] = tempRow[j];
+                fclose(plik);
+        } else {
+                for (int i = 0; i < (n / PP); i++) {
+                        // printf("waiting for %d %d\n", my_rank, i);
+                        MPI_Recv(temp, (n / PP), MPI_FLOAT, root, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        // printf("received %d %d\n", my_rank, i);
+                        for (int j = 0; j < (n / PP); j++) {
+                                A[i][j] = temp[j];
+                                B[i][j] = temp[j];
                         }
                 }
         }
         MPI_Barrier(MPI_COMM_WORLD);
 
-        for (int i = 0; i < nPP; i++) {
-                for (int j = 0; j < nPP; j++) {
+        for (int i = 0; i < (n / PP); i++) {
+                for (int j = 0; j < (n / PP); j++) {
                         C[i][j] = 0;
-                        // printf("%d:%d/%d - %f\n", procRank, i, j, C[i][j]);
+                        // printf("%d:%d/%d - %f\n", my_rank, i, j, C[i][j]);
                 }
         }
 
-        if (isRootProc) {
-                startWorkTime = MPI_Wtime();
+        if (my_rank == root) {
+                startwtime2 = MPI_Wtime();
         }
 
         // COMPUTATIONS start
 
-        int leftProc = getLeftProc(procRank);
-        int rightProc = getRightProc(procRank);
-        int upProc = getUpProc(procRank);
-        int downProc = getDownProc(procRank);
+        int Left = myLeft(my_rank);
+        int Right = myRight(my_rank);
+        int Top = myTop(my_rank);
+        int Bottom = myBottom(my_rank);
 
-        // printf("Process:%d, left:%d, right:%d, up:%d, down:%d\n", procRank, leftProc, rightProc, upProc, downProc);
+        // printf("Process:%d, left:%d, right:%d, up:%d, down:%d\n", my_rank, Left, Right, Top, Bottom);
 
-        if (procRow > 0) {
-                MPI_Isend(A, nPP * nPP, MPI_FLOAT, leftProc, tag, MPI_COMM_WORLD, reqSend);
-                MPI_Irecv(A, nPP * nPP, MPI_FLOAT, rightProc, tag, MPI_COMM_WORLD, reqRecv);
+        if (row > 0) {
+                MPI_Isend(A, (n / PP)*(n / PP), MPI_FLOAT, Left, tag, MPI_COMM_WORLD, reqSend);
+                MPI_Irecv(A, (n / PP)*(n / PP), MPI_FLOAT, Right, tag, MPI_COMM_WORLD, reqRecv);
                 MPI_Wait(reqRecv, statRecv); //2x oczekiwanie na zakonczenie komunikacji
         }
         MPI_Barrier(MPI_COMM_WORLD);
 
-        if (procCol > 0) {
-                MPI_Isend(B, nPP * nPP, MPI_FLOAT, upProc, tag, MPI_COMM_WORLD, reqSend);
-                MPI_Irecv(B, nPP * nPP, MPI_FLOAT, downProc, tag, MPI_COMM_WORLD, reqRecv);
+        if (col > 0) {
+                MPI_Isend(B, (n / PP)*(n / PP), MPI_FLOAT, Top, tag, MPI_COMM_WORLD, reqSend);
+                MPI_Irecv(B, (n / PP)*(n / PP), MPI_FLOAT, Bottom, tag, MPI_COMM_WORLD, reqRecv);
                 MPI_Wait(reqRecv, statRecv); //2x oczekiwanie na zakonczenie komunikacji
         }
         MPI_Barrier(MPI_COMM_WORLD);
 
         for (int turn = 0; turn < PP; turn++) {
-                for (int i = 0; i < nPP; i++) {
-                        for (int k = 0; k < nPP; k++) {
-                                for (int j = 0; j < nPP; j++) {
+                for (int i = 0; i < (n / PP); i++) {
+                        for (int j = 0; j < (n / PP); j++) {
+                                for (int k = 0; k < (n / PP); k++) {
                                         C[i][j] += A[i][k] * B[k][j];
                                 }
                         }
@@ -167,62 +163,61 @@ int main(int argc, char* argv[])
                         break;
                 }
 
-                MPI_Isend(A, nPP * nPP, MPI_FLOAT, leftProc, tag, MPI_COMM_WORLD, reqSend);
-                MPI_Irecv(A, nPP * nPP, MPI_FLOAT, rightProc, tag, MPI_COMM_WORLD, reqRecv);
+                MPI_Isend(A, (n / PP)*(n / PP), MPI_FLOAT, Left, tag, MPI_COMM_WORLD, reqSend);
+                MPI_Irecv(A, (n / PP)*(n / PP), MPI_FLOAT, Right, tag, MPI_COMM_WORLD, reqRecv);
                 MPI_Wait(reqRecv, statRecv);
                 MPI_Barrier(MPI_COMM_WORLD);
-                MPI_Isend(B, nPP * nPP, MPI_FLOAT, upProc, tag, MPI_COMM_WORLD, reqSend);
-                MPI_Irecv(B, nPP * nPP, MPI_FLOAT, downProc, tag, MPI_COMM_WORLD, reqRecv);
+                MPI_Isend(B, (n / PP)*(n / PP), MPI_FLOAT, Top, tag, MPI_COMM_WORLD, reqSend);
+                MPI_Irecv(B, (n / PP)*(n / PP), MPI_FLOAT, Bottom, tag, MPI_COMM_WORLD, reqRecv);
                 MPI_Wait(reqRecv, statRecv);
                 MPI_Barrier(MPI_COMM_WORLD);
         }
 
         // COMPUTATIONS end
 
-        if (isRootProc) {
-                endTime = MPI_Wtime();
-                printf("Calkowity czas przetwarzania wynosi %f sekund\n", endTime - startProcTime);
-                printf("Calkowity czas obliczeń wynosi %f sekund\n", endTime - startWorkTime);
+        if (my_rank == root) {
+                endtime = MPI_Wtime();
+                printf("Calkowity czas przetwarzania wynosi %f sekund\n", endtime - startwtime1);
+                printf("Calkowity czas obliczeń wynosi %f sekund\n", endtime - startwtime2);
 
-                outFile = fopen("7out.txt", "w");
-                if (outFile == NULL) {
+                plik_out = fopen("wynik.txt", "w");
+                if (plik_out == NULL) {
                         printf("Blad otwarcia pliku \"7out.txt\"\n");
                         MPI_Finalize();
-                        exit(0);
+                        return 0;
                 }
 
                 for (int i = 0; i < n * PP; i++) {
-                        fromProc = (i / n) * PP + (i % PP);
+                        from_rank = (i / n) * PP + (i % PP);
 
-                        if (fromProc == rootProc) {
-                                for (int j = 0; j < nPP; j++) {
-                                        fprintf(outFile, "%7.1f", C[(i / PP) % nPP][j]);
-                                        //fprintf(outFile, "%d.%d%d ", fromProc, (i / PP) % nPP, j);
+                        if (from_rank == root) {
+                                for (int j = 0; j < (n / PP); j++) {
+                                        fprintf(plik_out, "%10.1f", C[(i / PP) % (n / PP)][j]);
+                                        //fprintf(plik_out, "%d.%d%d ", from_rank, (i / PP) % (n / PP), j);
                                 }
-                        }
-                        else {
-                                // printf("waiting for %d %d\n", fromProc, i);
-                                MPI_Recv(tempRow, nPP, MPI_FLOAT, fromProc, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                printf("received %d %d\n", fromProc, i);
-                                for (int j = 0; j < nPP; j++) {
-                                        fprintf(outFile, "%7.1f", tempRow[j]);
-                                        //fprintf(outFile, "%d.%d%d ", fromProc, (i / PP) % nPP, j);
+                        } else {
+                                // printf("waiting for %d %d\n", from_rank, i);
+                                MPI_Recv(temp, (n / PP), MPI_FLOAT, from_rank, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                // printf("received %d %d\n", from_rank, i);
+                                for (int j = 0; j < (n / PP); j++) {
+                                        fprintf(plik_out, "%10.1f", temp[j]);
+                                        //fprintf(plik_out, "%d.%d%d ", from_rank, (i / PP) % (n / PP), j);
                                 }
                         }
 
                         if (i % PP == PP - 1) {
-                                fprintf(outFile, "\n");
+                                fprintf(plik_out, "\n");
                         }
+
                 }
-                fclose(outFile);
-        }
-        else {
-                for (int i = 0; i < nPP; i++) {
-                        for (int j = 0; j < nPP; j++) {
-                                tempRow[j] = C[i][j];
+                fclose(plik_out);
+        } else {
+                for (int i = 0; i < (n / PP); i++) {
+                        for (int j = 0; j < (n / PP); j++) {
+                                temp[j] = C[i][j];
                         }
-                        // printf("sending %d %d\n", procRank, (procRow) * n + i * PP + procCol);
-                        MPI_Isend(tempRow, nPP, MPI_FLOAT, rootProc, (procRow)*n + i * PP + procCol, MPI_COMM_WORLD, reqSend);
+                        // printf("sending %d %d\n", my_rank, (row) * n + i * PP + col);
+                        MPI_Isend(temp, (n / PP), MPI_FLOAT, root, (row) * n + i * PP + col, MPI_COMM_WORLD, reqSend);
                 }
         }
         MPI_Barrier(MPI_COMM_WORLD);
