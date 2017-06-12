@@ -1,0 +1,1 @@
+Klasyczny algorytm mnozenia macierzy, liczba watkow 8 
