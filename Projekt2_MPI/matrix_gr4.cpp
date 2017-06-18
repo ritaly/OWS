@@ -7,18 +7,20 @@
 #include "omp.h"
 #include <stdlib.h>
 #include <unistd.h>
-#define USE_MULTIPLE_THREADS  true
+#define USE_MULTIPLE_THREADS true
 # define MAXTHREADS 128 // bylo 128
 int NumThreads;
 double start;
+double big_start;
+double big_end;
 double end;
-static const int ROWS = 1000; // liczba wierszy macierzy
-static const int COLUMNS = 1000; // lizba kolumn macierzy
+static const int ROWS = 2000; // liczba wierszy macierzy
+static const int COLUMNS = 2000; // lizba kolumn macierzy
 
 float matrix_a[ROWS][COLUMNS]; // lewy operand
 float matrix_b[ROWS][COLUMNS]; // prawy operand
 float matrix_r[ROWS][COLUMNS]; // wynik
-FILE *result_file;
+FILE * result_file;
 
 void initialize_matrices() {
         // zdefiniowanie zawarosci poczatkowej macierzy
@@ -72,36 +74,37 @@ void multiply_matrices_IKJ() {
 
 //nasze
 
-void multiply_matrices_KJI() {
+void multiply_matrices_par_KJI() {
         // mnozenie macierzy
-  #pragma omp parallel //for
-        //#pragma omp for
+  #pragma omp parallel
+  #pragma omp for
         for (int k = 0; k < COLUMNS; k++) {
-//#pragma omp for // daje poprawny wynik
                 for (int j = 0; j < COLUMNS; j++) {
-   #pragma omp for // daje poprawny wynik
+
+                        // daje poprawny wynik
                         for (int i = 0; i < ROWS; i++) {
                                 matrix_r[i][j] += matrix_a[i][k] * matrix_b[k][j];
 
                         }
                 }
         }
-/*
-   printf("nasze: ");
+}
+void multiply_matrices_KJI() {
+        // mnozenie macierzy
 
 
-   printf("\n");
-   for (int i=0;i<3;i++) {
-   printf("\n");
-    for (int j=0; j<3; j++) {
-    printf("c: %f",matrix_r[i][j]  ) ;
-    }}
-   printf("koniec nasze: ");
- */
+        for (int k = 0; k < COLUMNS; k++) {
+                for (int j = 0; j < COLUMNS; j++) {
+                        for (int i = 0; i < ROWS; i++) {
+                                matrix_r[i][j] += matrix_a[i][k] * matrix_b[k][j];
+                        }
+                }
+        }
+
 }
 
 int main(int argc, char * argv[]) {
-        start = (double)(clock() / CLOCKS_PER_SEC);
+        big_start =(double) omp_get_wtime();
         if ((result_file = fopen("classic.txt", "a")) == NULL) {
                 fprintf(stderr, "nie mozna otworzyc pliku wyniku \n");
                 perror("classic");
@@ -120,31 +123,55 @@ int main(int argc, char * argv[]) {
         } else
                 NumThreads = 1;
         // dla kazdego
-        fprintf(result_file, "Klasyczny algorytm mnozenia macierzy, liczba watkow %d \n", NumThreads);
+        //fprintf(result_file, "Klasyczny algorytm mnozenia macierzy, liczba watkow %d \n", NumThreads);
         printf("liczba watkow  = %d\n\n", NumThreads);
 
         initialize_matrices();
-        // kji to sekwencyjnie i rownolegle
-        initialize_matricesZ();
-        start = (double) clock() / CLOCKS_PER_SEC;
-        multiply_matrices_KJI();
-        end = (double) clock() / CLOCKS_PER_SEC;
-        printf("KJI ");
 
-        printf(" roznica: %f \n", end - start);
         if (NumThreads == 1) {
                 // to musi  zsotac:  tylko sekwencyjnie
-                initialize_matricesZ();
-                start = (double) clock() / CLOCKS_PER_SEC;
 
+                initialize_matricesZ();
+                start = (double) omp_get_wtime();
                 multiply_matrices_IKJ();
-                end = (double) clock() / CLOCKS_PER_SEC;
+                end = (double) omp_get_wtime();
                 printf("IKJ ");
 
-                printf(" roznica: %f \n", end - start);
+                printf(" czas sekwencyjnego: : %f \n", end - start);
+/*
+                initialize_matricesZ();
+                start = (double) omp_get_wtime();
+                multiply_matrices_KJI();
+                end = (double) omp_get_wtime();
+                printf("KJI ");
+
+                printf(" czas sekwencyjnego: %f \n", end - start);
+ */
+
+        }
+        else {
+
+                initialize_matricesZ();
+                start = (double) omp_get_wtime(); //clock() / CLOCKS_PER_SEC;
+                multiply_matrices_par_KJI();
+                end = (double) omp_get_wtime();
+                printf("KJI ");
+
+                printf(" czas rownoleglego: : %f \n", end - start);
+/*
+   initialize_matricesZ();
+   start = (double) omp_get_wtime();
+   multiply_matrices_KJI();
+   end = (double) omp_get_wtime();
+   printf("KJI ");
+
+   printf(" czas sekwencyjnego:: %f \n", end - start);
+ */
         }
 
         fclose(result_file);
+        big_end = (double) omp_get_wtime();
+        printf(" czas obliczen caly:: %f \n", big_end - big_start);
 
         return (0);
 }
