@@ -136,11 +136,10 @@ int main(int argc, char *argv[]) {
 
         // printf("Process:%d, left:%d, right:%d, up:%d, down:%d\n", my_rank, Left, Right, Top, Bottom);
 
-        if (row > 0) {
+        if (row > 0) { // o co tu chodzi
                 MPI_Isend(A, (n / PP)*(n / PP), MPI_FLOAT, Left, tag, MPI_COMM_WORLD, reqSend);
                 MPI_Irecv(A, (n / PP)*(n / PP), MPI_FLOAT, Right, tag, MPI_COMM_WORLD, reqRecv);
-                MPI_Wait(reqRecv, statRecv); //2x oczekiwanie na zakonczenie komunikacji
-        }
+                MPI_Wait(reqRecv, statRecv);
         MPI_Barrier(MPI_COMM_WORLD);
 
         if (col > 0) {
@@ -178,7 +177,7 @@ int main(int argc, char *argv[]) {
         if (my_rank == root) {
                 endtime = MPI_Wtime();
                 printf("Calkowity czas przetwarzania wynosi %f sekund\n", endtime - startwtime1);
-                printf("Calkowity czas obliczeń wynosi %f sekund\n", endtime - startwtime2);
+                //printf("Calkowity czas obliczeń wynosi %f sekund\n", endtime - startwtime2);
 
                 plik_out = fopen("wynik.txt", "w");
                 if (plik_out == NULL) {
