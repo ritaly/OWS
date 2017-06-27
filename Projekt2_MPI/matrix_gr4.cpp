@@ -14,8 +14,8 @@ double start;
 double big_start;
 double big_end;
 double end;
-static const int ROWS = 2000; // liczba wierszy macierzy
-static const int COLUMNS = 2000; // lizba kolumn macierzy
+static const int ROWS = 750; // liczba wierszy macierzy
+static const int COLUMNS = 750; // lizba kolumn macierzy
 
 float matrix_a[ROWS][COLUMNS]; // lewy operand
 float matrix_b[ROWS][COLUMNS]; // prawy operand
@@ -77,8 +77,9 @@ void multiply_matrices_IKJ() {
 void multiply_matrices_par_KJI() {
         // mnozenie macierzy
   #pragma omp parallel
-  #pragma omp for
+#pragma omp for
         for (int k = 0; k < COLUMNS; k++) {
+
                 for (int j = 0; j < COLUMNS; j++) {
 
                         // daje poprawny wynik
@@ -138,15 +139,15 @@ int main(int argc, char * argv[]) {
                 printf("IKJ ");
 
                 printf(" czas sekwencyjnego: : %f \n", end - start);
-/*
-                initialize_matricesZ();
-                start = (double) omp_get_wtime();
-                multiply_matrices_KJI();
-                end = (double) omp_get_wtime();
-                printf("KJI ");
+                /*
+                               initialize_matricesZ();
+                               start = (double) omp_get_wtime();
+                               multiply_matrices_KJI();
+                               end = (double) omp_get_wtime();
+                               printf("KJI ");
 
-                printf(" czas sekwencyjnego: %f \n", end - start);
- */
+                           printf(" czas sekwencyjnego: %f \n", end - start);
+                 */
 
         }
         else {
