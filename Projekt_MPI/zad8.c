@@ -33,12 +33,12 @@ int main(int argc, char *argv[])
 								MPI_Comm_split(MPI_COMM_WORLD,j,index, &kom_kolumny);
 								if (j==0) // wynik w kolumnie 0 procesie o index=0 w tym komunikatorze
 								{
-																MPI_Gather(&a[i],1,MPI_FLOAT, wynik,1,MPI_FLOAT,0,kom_kolumny);
+										MPI_Gather(&a[i],1,MPI_FLOAT, wynik,1,MPI_FLOAT,0,kom_kolumny);
 
-																if(index == 0)
+										if(index == 0)
 																{
-																								printf("Proces = %d\n", id);
-																								for (int k = 0; k < N; k++)
+																		printf("Proces = %d\n", id);
+																		for (int k = 0; k < N; k++)
 																																printf("Wynik = %f\n", wynik[k]);
 																}
 								}
@@ -46,4 +46,6 @@ int main(int argc, char *argv[])
 								MPI_Finalize();
 
 
+
+// jakie liczby porownywal proces który wywyświetla nam wynik sortowania?
 }
